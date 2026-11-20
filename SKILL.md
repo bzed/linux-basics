@@ -1,6 +1,6 @@
 ---
 name: linux-basics
-description: Core working knowledge for running commands on Linux systems — identifying the distro and environment, privileges and sudo, package managers, services (systemd), filesystem layout, temp/build locations, CPU and memory limits for builds and parallel jobs, processes, permissions and safe shell habits. Debian-first, but covers other distros. Load this skill whenever you are about to execute shell commands, scripts, builds, installs or system inspection on a Linux host, even for tasks that seem simple or when the user never mentions "Linux" — if the platform is linux and you are going to run something, this applies.
+description: Core working knowledge for running commands on Linux systems — identifying the distro and environment, privileges and sudo, package managers, services (systemd), filesystem layout, temp/build locations, CPU and memory limits for builds and parallel jobs, processes, podman containers, permissions and safe shell habits. Debian-first, but covers other distros. Load this skill whenever you are about to execute shell commands, scripts, builds, installs or system inspection on a Linux host, even for tasks that seem simple or when the user never mentions "Linux" — if the platform is linux and you are going to run something, this applies.
 ---
 
 # Linux Basics
@@ -121,6 +121,21 @@ id                                                          # user, groups (adm?
 - Don't fix permission problems with `chmod 777` or `chmod -R`. Find out why access is denied
   (`ls -l`, `id`, `namei -l /path`).
 
+## 9. Containers (podman)
+
+- **Mount only what's needed.** Never mount `$HOME`, `/` or system directories. Mount the
+  specific project or data directory, read-only (`:ro`) unless the container must write, and
+  never the podman/docker socket or credential directories (`~/.ssh`, …).
+- **Limit the container.** Set CPU, memory and process limits (`--cpus`, `--memory`,
+  `--pids-limit`, `--timeout`), drop capabilities, and never use `--privileged`.
+- **Limit networking to what's needed.** `--network=none` when no network is needed, an
+  `--internal` network for container-to-container traffic, and published ports bound to
+  `127.0.0.1` only. Avoid `--network=host`.
+- **Leave nothing behind.** Use `--rm`, label what you create (`--label agent-task=…`), and
+  delete your containers, networks, volumes and images when done. Never use `prune` or
+  `system reset`: they delete the user's things too.
+- Use rootless podman. `sudo podman` needs permission (section 1). → `references/containers.md`
+
 ## Reference files
 
 | File | Read it when |
@@ -131,3 +146,4 @@ id                                                          # user, groups (adm?
 | `references/filesystem.md` | creating temp/build dirs, writing large data, editing config |
 | `references/resources.md` | builds, tests, compression or anything parallel or memory-hungry |
 | `references/processes.md` | checking whether something runs, `pgrep`/`pkill`/`ps`, ports |
+| `references/containers.md` | running anything with `podman` (or `docker`) |
