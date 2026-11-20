@@ -4,6 +4,7 @@ Read this before installing or querying packages, or when you need to know exact
 distribution and release you are on.
 
 ## Contents
+
 - Detecting the distribution and release
 - Package manager equivalents
 - Debian/apt specifics

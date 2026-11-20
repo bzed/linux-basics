@@ -4,6 +4,7 @@ Read this before creating temp or build directories, writing anything large, or 
 configuration.
 
 ## Contents
+
 - Where temp and build files go
 - tmpfs `/tmp`: don't overfill it
 - Automatic cleanup of `/tmp` and `/var/tmp`

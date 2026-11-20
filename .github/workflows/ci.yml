@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, to catch links that broke without a commit.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SKILLS_REF_VERSION: "0.1.1"
+  SKILL_VALIDATOR_VERSION: "1.8.0"
+
+jobs:
+  skill:
+    name: Validate skill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: agentskills validate (reference validator)
+        run: |
+          python -m pip install --quiet "skills-ref==${SKILLS_REF_VERSION}"
+          agentskills validate "$GITHUB_WORKSPACE/skills/linux-basics"
+
+      - name: Install skill-validator
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euf -o pipefail
+          dir=$(mktemp -d)
+          gh release download "v${SKILL_VALIDATOR_VERSION}" -R agent-ecosystem/skill-validator \
+            -D "$dir" \
+            -p "skill-validator_${SKILL_VALIDATOR_VERSION}_linux_amd64.tar.gz" \
+            -p "skill-validator_${SKILL_VALIDATOR_VERSION}_checksums.txt"
+          (cd "$dir" && grep linux_amd64 "skill-validator_${SKILL_VALIDATOR_VERSION}_checksums.txt" | sha256sum -c -)
+          tar -xzf "$dir/skill-validator_${SKILL_VALIDATOR_VERSION}_linux_amd64.tar.gz" -C "$dir" skill-validator
+          install -m 0755 "$dir/skill-validator" /usr/local/bin/skill-validator
+
+      - name: skill-validator check
+        run: |
+          skill-validator check --strict --emit-annotations skills/
+          NO_COLOR=1 skill-validator check --strict -o markdown skills/ >> "$GITHUB_STEP_SUMMARY"
+
+      - name: evals.json is valid JSON
+        run: python -m json.tool evals/evals.json > /dev/null
+
+  lint:
+    name: Lint docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@696eb3f2509270d7b882d2aa68347bc676e7af34 # v25.0.0
+        with:
+          globs: "**/*.md"
+
+      - name: typos
+        uses: crate-ci/typos@276087d9a4f06398b3e04825487805e2d7375888 # v1.52.2
+
+  links:
+    name: Check links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: lychee
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --no-progress --max-concurrency 4 './**/*.md'
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  workflows:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: actionlint
+        run: |
+          docker run --rm --network=none -v "$PWD:/repo:ro" -w /repo \
+            docker.io/rhysd/actionlint:1.7.12 -color
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: zizmor (workflow security)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uvx zizmor@1.16.0 --format=github .github/workflows/

@@ -4,6 +4,7 @@ Read this before builds, test suites, compression, encoding or anything else tha
 parallel or use a lot of memory.
 
 ## Contents
+
 - Why it matters
 - Check the machine first
 - How many jobs to use

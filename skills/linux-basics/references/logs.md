@@ -4,6 +4,7 @@ Read this when you inspect services or read logs, and especially before concludi
 "there are no errors".
 
 ## Contents
+
 - systemctl and journalctl basics
 - Who can read which logs
 - Classic text logs

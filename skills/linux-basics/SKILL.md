@@ -1,6 +1,7 @@
 ---
 name: linux-basics
-description: Core working knowledge for running commands on Linux systems — identifying the distro and environment, privileges and sudo, package managers, services (systemd), filesystem layout, temp/build locations, CPU and memory limits for builds and parallel jobs, processes, podman containers, permissions and safe shell habits. Debian-first, but covers other distros. Load this skill whenever you are about to execute shell commands, scripts, builds, installs or system inspection on a Linux host, even for tasks that seem simple or when the user never mentions "Linux" — if the platform is linux and you are going to run something, this applies.
+description: Core working knowledge for running commands on Linux systems — identifying the distro and environment, privileges and sudo, package managers, services (systemd), filesystem layout, temp/build locations, CPU and memory limits for builds and parallel jobs, processes, podman containers, permissions, safe shell scripting (strict mode, quoting, mktemp/trap, shellcheck) and searching with ripgrep. Debian-first, but covers other distros. Load this skill whenever you are about to execute shell commands, scripts, builds, installs or system inspection on a Linux host, even for tasks that seem simple or when the user never mentions "Linux" — if the platform is linux and you are going to run something, this applies.
+license: MIT
 ---
 
 # Linux Basics
@@ -112,7 +113,12 @@ id                                                          # user, groups (adm?
   `SYSTEMD_PAGER=cat`, `--no-pager`. Set `GIT_EDITOR=true` for commands that would open an editor.
 - `/bin/sh` is `dash` on Debian/Ubuntu. `#!/bin/sh` scripts must be POSIX. Otherwise use
   `#!/bin/bash`. → `references/shells.md`
-- In bash scripts, use `set -euo pipefail`. Quote every expansion: `"$var"`, `"$@"`.
+- **Writing scripts:** start bash scripts with `set -euf -o pipefail` (know its side effects:
+  `-f` disables globbing). Quote every expansion (`"$var"`, `"$@"`) and use `--` before
+  file-name arguments. Create temp files with `mktemp` and remove them with
+  `trap 'rm -rf -- "$tmpdir"' EXIT`. Avoid `eval`; use arrays to build commands. Make sure
+  non-POSIX features work in the shell that runs the code. Run `shellcheck` on every script
+  before using it. → `references/shell-scripting.md`
 - Guard destructive commands: `rm -rf "${dir:?}/"` fails instead of deleting `/` when `dir` is
   empty. Look at a path before overwriting or deleting it.
 - When parsing command output, set `LC_ALL=C`.
@@ -136,6 +142,17 @@ id                                                          # user, groups (adm?
   `system reset`: they delete the user's things too.
 - Use rootless podman. `sudo podman` needs permission (section 1). → `references/containers.md`
 
+## 10. Searching with `rg`
+
+- `rg` silently **skips** files matched by `.gitignore`/`.ignore`, hidden files and
+  directories (`.github/`, `.env`), binary files and symlinks. "No matches" isn't "not there":
+  before concluding something doesn't exist, repeat with `-uu` (`--no-ignore --hidden`) or
+  `-uuu` (also binary), or name the path explicitly.
+- Always give a path (`rg PATTERN .`): without one, rg may search stdin instead and hang.
+- Use `-F` for literal strings, `-t TYPE`/`-g GLOB` to narrow, single-quote patterns and globs.
+- For processing results, use `--json` (JSON Lines with `begin`/`match`/`end`/`summary`
+  messages). Exit status `1` = no match, `2` = error. → `references/ripgrep.md`
+
 ## Reference files
 
 | File | Read it when |
@@ -147,3 +164,5 @@ id                                                          # user, groups (adm?
 | `references/resources.md` | builds, tests, compression or anything parallel or memory-hungry |
 | `references/processes.md` | checking whether something runs, `pgrep`/`pkill`/`ps`, ports |
 | `references/containers.md` | running anything with `podman` (or `docker`) |
+| `references/shell-scripting.md` | writing any shell script or non-trivial one-liner |
+| `references/ripgrep.md` | searching with `rg`, or when a search finds nothing |

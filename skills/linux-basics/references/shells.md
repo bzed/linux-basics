@@ -4,6 +4,7 @@ Read this when the shell running your commands (or the user's login shell) is no
 when you write `#!/bin/sh` scripts.
 
 ## Contents
+
 - Detecting the shell
 - What to do when it isn't bash
 - zsh

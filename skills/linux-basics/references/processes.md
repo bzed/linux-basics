@@ -4,6 +4,7 @@ Read this before using `pgrep`, `pkill`, `ps | grep` or `killall`, or whenever y
 whether something is still running.
 
 ## Contents
+
 - The self-match trap with `pgrep -f`
 - How pgrep matches
 - Ways to avoid the self-match

@@ -1,0 +1,5 @@
+# markdownlint-cli2 configuration (used locally and by CI)
+config:
+  default: true
+  # Long lines are fine: tables and command examples read better unwrapped.
+  MD013: false
