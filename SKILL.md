@@ -33,6 +33,34 @@ id                                                    # who am I, which groups
 - In containers there is usually no systemd, no `sudo`, and only a minimal set of tools. Check before using them.
 - Check for a tool with `command -v tool`, not `which` (which isn't always installed and behaves differently between implementations).
 
+### Which shell runs your commands?
+
+You probably write commands as bash by habit, but the harness often runs them in **the user's login shell**, which may well not be bash. Check before writing anything nontrivial:
+
+```sh
+ps -p $$ -o comm=                         # the shell actually running this command
+getent passwd "$(id -un)" | cut -d: -f7   # the user's login shell
+echo "$SHELL"                             # usually the login shell, not necessarily the current one
+ls -l /bin/sh                             # dash on Debian/Ubuntu
+```
+
+If it isn't bash, you have two options:
+- **Wrap it in bash** for anything using bash features (arrays, `[[ ]]`, `${var//x/y}`, process substitution, `set -o pipefail`, `read -p`, `mapfile`, `shopt`): `bash -c '...'`, or write a `#!/bin/bash` script and run it. This is the reliable choice for multi-line logic.
+- **Or write for the shell you're in.** Simple commands (one tool, a pipe, `&&`) work the same everywhere, *as long as you quote properly*. Know the differences:
+
+**zsh** (common as a login shell, e.g. Debian developers, macOS):
+- Unquoted variables are **not** word-split: with `v="a b"`, `for w in $v` loops once. Bash would loop twice. Use `${=v}` in zsh, or an array.
+- An unmatched glob is an **error** (`no matches found: [m]yserver`, `*.log`) and the command doesn't run at all. Bash would pass the literal text through. Quote every pattern meant for a program, not the shell: regexes, `find -name '*.c'`, `pgrep '[f]oo'`, `apt-get install 'libfoo*'`, URLs with `?`/`[]`.
+- Arrays start at **1** (`${a[1]}` is the first element), not 0.
+- `echo` interprets backslash escapes (`\n`, `\t`) by default. Use `printf '%s\n' "$x"` for exact output in any shell.
+- `=word` at the start of a word expands to the path of a command (`echo =ls` → `/usr/bin/ls`), and `**` is a recursive glob.
+- `read -p` doesn't mean "prompt" (zsh uses `read "var?prompt"`), `mapfile`/`readarray`/`shopt` don't exist, and `$BASH_SOURCE` is empty.
+- Config like `setopt`, aliases or functions from the user's `.zshrc` may change behaviour. A wrapped `bash -c` avoids that too.
+
+**dash / POSIX sh** (`/bin/sh` on Debian/Ubuntu, `sh -c`, `#!/bin/sh` scripts): no arrays, no `[[ ]]` (use `[ ]` and quote both sides), no `==` in `[ ]` (use `=`), no `{1..5}` (use `seq`), no `function` keyword, no `source` (use `.`), no `$'...'`, no `<<<`, `set -o pipefail` only in recent dash (test it: `dash -c 'set -o pipefail'`; older releases reject it), `echo -e` prints `-e`. Check scripts with `checkbashisms` (package `devscripts`) or `shellcheck -s sh` if they're installed.
+
+**fish, ksh, tcsh/csh, nushell, xonsh**: their syntax differs too much to adapt bash one-liners. Always wrap: `bash -c '...'` (or `sh -c` for simple POSIX commands). In fish, even `$(...)`, `VAR=x cmd` and `&&` differ or only work in recent versions.
+
 ## 2. Privileges
 
 - **Never become root without explicit permission from the user.** That covers `sudo` (including "harmless" probes like `sudo -n true`), `su`, `doas`, `pkexec`, `run0`, `machinectl shell root@`, and any setuid helper or trick that gets the same effect. This includes `sudo` tucked into a larger diagnostic one-liner "just to check": that is still running sudo. Root can damage the whole system and bypasses every safeguard the user relies on, so the user decides when it's used, not you. Permission applies to the specific task it was given for. It is not a standing licence.
@@ -101,6 +129,27 @@ grep -E '^(SYS_)?UID_(MIN|MAX)' /etc/login.defs   # regular-user UID range, usua
 
 - Use `top -b -n1`, not `top`. `htop` and similar tools are interactive and hang.
 - Stop a process with `kill PID` (SIGTERM) first, and use `kill -9` only if it ignores that. `pkill name` or `killall name` can hit other people's processes. Prefer `pgrep -a` to see what matches before killing.
+
+### Checking whether something is running: `pgrep` done right
+
+The classic agent bug: "is my server still running?" → `pgrep -f myserver` → always "yes", even after the server died. `pgrep` itself never matches itself (procps-ng, see `man pgrep` → NOTES). But your command doesn't run alone. The harness wraps it in a shell, e.g. `bash -c '... pgrep -f myserver ...'` or `zsh -c "... eval '...pgrep -f myserver...'"`. With `-f`, pgrep matches against full command lines, and that **wrapper shell's command line contains your pattern**, so it matches its own parent and reports success. The same goes for `ps aux | grep myserver`, where `grep` matches itself.
+
+How pgrep matches (from `man pgrep`, procps-ng 4.x):
+- The pattern is an **extended regular expression**, matched as a substring (unanchored) unless you pass `-x`.
+- Without `-f`, it matches only the **process name**, which is truncated to **15 characters** (`/proc/PID/stat`). `pgrep my-long-server-name` never matches; use `-f` or the first 15 characters.
+- With `-f`, it matches the **full command line** (`/proc/PID/cmdline`), including arguments. That's where the self-match trap is.
+- Exit status: `0` = something matched, `1` = nothing matched, `2` = syntax error, `3` = fatal error. Don't treat every non-zero status as "not running": `2` means your command was wrong.
+- Zombie (defunct) processes are reported too. "Matched" doesn't guarantee "working".
+- Useful options: `-a` (show the command line, always use it while checking what you'll match), `-x` (exact match), `-u user` (only that user's processes), `-n`/`-o` (newest/oldest), `-c` (count), `-P ppid` (children of a process), `--quiet` (no output, only the exit status).
+
+Ways to avoid the self-match, best first:
+1. **Track the PID instead of searching for a name.** When you start the process yourself, record its PID (`$!`, or your harness's background-task ID) and check that specific process: `kill -0 "$pid" 2>/dev/null && echo running`. `kill -0` sends no signal. It only tests whether the process exists and you may signal it. `ps -p "$pid" -o pid=,stat=,cmd=` also shows whether it's a zombie. With a pidfile: `pgrep -F file.pid`. This is the only method that can't confuse two processes.
+2. **Match the process name, not the command line**, when the name is distinctive: `pgrep -x nginx` (no `-f`). The wrapper shell is called `bash`/`zsh`, so it can't match.
+3. **`-A` / `--ignore-ancestors`** excludes pgrep's own parent chain, which covers exactly the wrapper shells: `pgrep -A -af 'myserver --port 8080'`. It exists only in newer procps-ng (4.x, e.g. Debian 13+). Check with `pgrep --help | grep -q -- --ignore-ancestors`. Older systems reject the option (exit `2`).
+4. **The bracket trick** for `-f` when nothing else works: `pgrep -af '[m]yserver'`. The regex `[m]yserver` matches the text `myserver` in the real process's command line, but the wrapper's command line contains the literal text `[m]yserver`, which that regex does not match. This works only if your pattern appears in the wrapper **solely** in bracketed form: if the same command also says `myserver` plainly anywhere (a `cd myserver`, an `echo`, a log path), the wrapper matches again. **Always single-quote it**: unquoted, `[m]yserver` is a glob. zsh then aborts with `no matches found`, and bash may silently replace it with a matching file name in the current directory.
+5. Same idea for ps: `ps aux | grep '[m]yserver'`, or better `ps -C myserver -o pid=,cmd=` (match by name, no grep at all).
+
+Never `pkill -f pattern` without first running `pgrep -af pattern` with the same pattern and reading what it lists. The self-match there means killing your own wrapper shell, and broad patterns hit unrelated processes.
 - Resources: `nproc`, `free -h`, `df -h`, `du -sh dir`. Check free space before large builds or downloads.
 - Ports and sockets: `ss -ltnp`. Process names are only shown as root. `netstat` is deprecated and often missing.
 - Network config: `ip addr`, `ip route`. `ifconfig` and `route` are deprecated and often missing.
@@ -109,7 +158,7 @@ grep -E '^(SYS_)?UID_(MIN|MAX)' /etc/login.defs   # regular-user UID range, usua
 ## 7. Safe shell habits
 
 - **Don't trigger pagers or editors.** Use `git --no-pager ...` or `GIT_PAGER=cat`, `PAGER=cat`, `SYSTEMD_PAGER=cat`, `--no-pager`. Set `GIT_EDITOR=true` for commands that would open an editor (`git commit` without `-m`, `git rebase --continue`).
-- **`/bin/sh` is `dash` on Debian/Ubuntu**, not bash. Scripts with `#!/bin/sh` must avoid bashisms (`[[ ]]`, arrays, `source`, `function`, `{1..5}`). Either write POSIX sh or use `#!/bin/bash`.
+- **`/bin/sh` is `dash` on Debian/Ubuntu**, not bash, and your interactive commands may run in zsh or another shell. See "Which shell runs your commands?" in section 1. Scripts with `#!/bin/sh` must be POSIX. Otherwise use `#!/bin/bash`.
 - In bash scripts, use `set -euo pipefail`. Quote every expansion: `"$var"`, `"$@"`.
 - Guard destructive commands: `rm -rf "${dir:?}/"` fails instead of deleting `/` when `dir` is empty. Never `rm -rf` a path built from unchecked input.
 - When parsing command output, set `LC_ALL=C`. Otherwise localized messages, number formats and sort order break your parsing.
