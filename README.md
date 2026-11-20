@@ -44,11 +44,11 @@ reference file with the details.
 
 ## Installation
 
-The skill directory **must be named `linux-basics`** (the `name` in `SKILL.md`), so clone the
-repository into a directory of that name rather than the default `linux-basics-skill`.
+The skill directory must be named `linux-basics` (the `name` in `SKILL.md`). A plain
+`git clone` already gives you that; keep the name if you clone somewhere else.
 
 ```sh
-git clone https://github.com/bzed/linux-basics-skill.git ~/workspace/skills/linux-basics
+git clone https://github.com/bzed/linux-basics.git ~/workspace/skills/linux-basics
 ```
 
 ### Claude Code
@@ -64,7 +64,7 @@ Or for a single project only, so everyone working on it gets the skill:
 
 ```sh
 mkdir -p .claude/skills
-git clone https://github.com/bzed/linux-basics-skill.git .claude/skills/linux-basics
+git clone https://github.com/bzed/linux-basics.git .claude/skills/linux-basics
 ```
 
 Claude Code picks up new skills in new sessions. Check with `/skills` (or ask "which skills
