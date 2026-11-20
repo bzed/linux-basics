@@ -11,7 +11,7 @@ the whole machine, or leaving side effects behind that nobody asked for.
 ## What it covers
 
 | Topic | Key rules |
-|---|---|
+| --- | --- |
 | Root | Never `sudo`/`su`/`doas`/`pkexec`/`run0` without the user's explicit permission, not even `sudo -n true` probes |
 | Orientation | Detect distro, Debian release (including testing/unstable `…/sid`), login shell and groups before acting |
 | Shells | Commands may run in zsh or dash, not bash: wrap in `bash -c` or know the differences (globbing, word splitting, arrays) |

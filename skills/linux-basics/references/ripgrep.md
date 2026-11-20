@@ -45,7 +45,7 @@ rg --debug PATTERN 2>&1 | rg 'ignoring'   # each skipped path with the rule that
 Use the narrowest switch that answers your question:
 
 | Option | Effect |
-|---|---|
+| --- | --- |
 | `-.` / `--hidden` | also search hidden files and directories (includes `.git/`, add `-g '!.git'`) |
 | `--no-ignore` | ignore `.gitignore`/`.ignore`/`.rgignore`/global/exclude rules |
 | `--no-ignore-vcs` | ignore only version-control rules (`.gitignore`), still respect `.ignore`/`.rgignore` |
@@ -67,7 +67,7 @@ used.
 ## Everyday options
 
 | Option | Meaning |
-|---|---|
+| --- | --- |
 | `-F` / `--fixed-strings` | literal string, not a regex (use for code with `(`, `[`, `.`, `$`, `*`) |
 | `-e PATTERN` | pattern, also one starting with `-`. Repeat for several patterns |
 | `-i` / `-S` / `-s` | ignore case / smart case (case-insensitive unless the pattern has uppercase) / case-sensitive |

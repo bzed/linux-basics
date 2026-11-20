@@ -39,7 +39,7 @@ command -v systemctl apt-get dnf pacman apk           # what actually exists
 ## Package manager equivalents
 
 | Family | Install | Query installed | Which package owns a file | Search |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Debian/Ubuntu | `apt-get install -y pkg` | `dpkg -l pkg` | `dpkg -S /path` | `apt-cache search`, `apt-file search` |
 | Fedora/RHEL | `dnf install -y pkg` | `rpm -q pkg` | `rpm -qf /path` | `dnf provides '*/file'` |
 | Arch | `pacman -S --noconfirm pkg` | `pacman -Q pkg` | `pacman -Qo /path` | `pacman -F file` |

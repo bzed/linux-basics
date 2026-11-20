@@ -23,7 +23,7 @@ set -euf -o pipefail
 ```
 
 | Option | Effect | Why |
-|---|---|---|
+| --- | --- | --- |
 | `-e` | exit on the first failing command | a failed `cd` or `mkdir` doesn't silently continue into the wrong place |
 | `-u` | using an unset variable is an error | a typo like `rm -rf "$BUILDIR/"` aborts instead of expanding to `rm -rf /` |
 | `-f` | no pathname expansion (globbing) | an unquoted `$var` or a pattern can never expand into unexpected file names |
@@ -88,7 +88,7 @@ tmpfile=$(mktemp "$tmpdir/data.XXXXXX")
 output) can execute commands. There is almost always a safe alternative:
 
 | Instead of | Use |
-|---|---|
+| --- | --- |
 | `eval "$cmd"` to run a built command | an array: `cmd=(tar -czf "$out" -- "$dir"); "${cmd[@]}"` |
 | `eval "echo \$$name"` (indirect variable) | `"${!name}"` (bash) or an associative array |
 | `eval "$name=\$value"` (dynamic assignment) | `printf -v "$name" '%s' "$value"` (bash) or `declare -g` |

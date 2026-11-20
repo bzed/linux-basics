@@ -156,7 +156,7 @@ id                                                          # user, groups (adm?
 ## Reference files
 
 | File | Read it when |
-|---|---|
+| --- | --- |
 | `references/packages.md` | detecting distro/release, installing or querying packages, Python packages |
 | `references/shells.md` | the shell isn't bash, or you write `#!/bin/sh` scripts |
 | `references/logs.md` | inspecting services or reading logs |

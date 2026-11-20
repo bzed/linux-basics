@@ -49,7 +49,7 @@ Many tools are either single-threaded by default (fine) or grab every core (not 
 Always pass an explicit limit to these:
 
 | Tool | Default | Limit it with |
-|---|---|---|
+| --- | --- | --- |
 | `make -j` (no number) | **unlimited** jobs | `make -j"$N"`. Never a bare `-j` |
 | `cmake --build . -j` (no number) | build tool default, unlimited with make | `cmake --build . -j "$N"` or `CMAKE_BUILD_PARALLEL_LEVEL=$N` |
 | `ninja` | `nproc + 2` | `ninja -j "$N"` |
