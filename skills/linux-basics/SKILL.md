@@ -150,6 +150,8 @@ id                                                          # user, groups (adm?
   `-uuu` (also binary), or name the path explicitly.
 - Always give a path (`rg PATTERN .`): without one, rg may search stdin instead and hang.
 - Use `-F` for literal strings, `-t TYPE`/`-g GLOB` to narrow, single-quote patterns and globs.
+- Add `--color=never`: if the harness runs commands in a pty or a user config sets
+  `--color=always`, ANSI escape codes end up in the output and break parsing and edits.
 - For processing results, use `--json` (JSON Lines with `begin`/`match`/`end`/`summary`
   messages). Exit status `1` = no match, `2` = error. → `references/ripgrep.md`
 

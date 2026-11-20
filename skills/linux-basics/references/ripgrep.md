@@ -94,6 +94,7 @@ used.
 | `-j N` | threads; default is chosen automatically, so set it on busy or shared machines (see `resources.md`) |
 | `-z` | also search compressed files (gz, bz2, xz, zstd, …) |
 | `--no-config` | ignore `RIPGREP_CONFIG_PATH`, so a user config can't change behaviour |
+| `--color=never` | no ANSI escape codes, even when the harness runs commands in a pty |
 
 The pattern syntax is Rust regex, close to ERE (`grep -E`) plus Perl classes like `\d`, `\w`,
 `\b`. No look-around and no backreferences without `-P`.
@@ -143,7 +144,10 @@ Under `set -e`, a search without matches aborts the script: use `rg … || true`
 - Quote patterns and globs in single quotes. In zsh, `rg -g *.py foo` fails with
   `no matches found`; in bash it may expand to file names.
 - Output on a pipe differs from a terminal (no colours, no headings, file name on every line).
-  Rely on explicit flags (`-n`, `-H`, `--no-heading`, `--color=never`) when parsing.
+  Some agent harnesses run commands in a pty, so rg thinks it prints to a terminal and adds
+  colour escape codes (`\e[1;31m`) and grouped headings. Those codes then end up in patterns
+  you copy or in edits you make. Always pass `--color=never`, plus `-n -H --no-heading` when
+  parsing.
 - A user config file (`RIPGREP_CONFIG_PATH`) can add flags silently. Add `--no-config` when
   results must be reproducible.
 - `rg` may not be installed (`command -v rg`). Then fall back to `grep -rn` (which has none of
